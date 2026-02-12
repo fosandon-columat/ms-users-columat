@@ -1,5 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { Injectable, Logger, OnModuleInit, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 import * as bcrypt from 'bcrypt';
@@ -28,7 +27,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
   async verifyToken(token: string) {
     try {
-      
+
       const { sub, iat, exp, ...user } = this.jwtService.verify(token, {
         secret: envs.jwtSecret,
       });
@@ -40,10 +39,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
     } catch (error) {
       console.log(error);
-      throw new RpcException({
-        status: 401,
-        message: 'Invalid token'
-      })
+      throw new UnauthorizedException('Invalid token');
     }
 
   }
@@ -59,10 +55,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
       });
 
       if (user) {
-        throw new RpcException({
-          status: 400,
-          message: 'User already exists',
-        });
+        throw new BadRequestException('User already exists');
       }
 
       const newUser = await this.user.create({
@@ -80,10 +73,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
         token: await this.signJWT(rest),
       };
     } catch (error) {
-      throw new RpcException({
-        status: 400,
-        message: error.message,
-      });
+      throw new BadRequestException(error.message);
     }
   }
 
@@ -96,19 +86,13 @@ export class AuthService extends PrismaClient implements OnModuleInit {
       });
 
       if (!user) {
-        throw new RpcException({
-          status: 400,
-          message: 'User/Password not valid',
-        });
+        throw new BadRequestException('User/Password not valid');
       }
 
       const isPasswordValid = bcrypt.compareSync(password, user.password);
 
       if (!isPasswordValid) {
-        throw new RpcException({
-          status: 400,
-          message: 'User/Password not valid',
-        });
+        throw new BadRequestException('User/Password not valid');
       }
 
       const { password: __, ...rest } = user;
@@ -118,10 +102,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
         token: await this.signJWT(rest),
       };
     } catch (error) {
-      throw new RpcException({
-        status: 400,
-        message: error.message,
-      });
+      throw new BadRequestException(error.message);
     }
   }
 }
